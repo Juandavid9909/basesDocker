@@ -41,14 +41,23 @@ Si se desea descargar una imagen para **Docker** podemos buscarlas [aquí](https
 | Eliminar un contenedor | `docker container rm -f <ID>` | `docker container rm 1fa` |
 
 
+## Logs
+
+Se pueden seguir los logs en los contenedores desde **Docker Desktop** o desde nuestra terminal de comandos como se muestra a continuación:
+
+| Descripción | Comando | Ejemplo |
+|--|--|--|
+| Ver logs en un contenedor | `docker container logs <ID>` | `docker container logs 58f` |
+
+
 # Variables de entorno
 
 Podemos utilizar variables con los tags cuando ejecutamos un comando en **Docker** donde podremos setear un valor específico que necesitamos y sabemos que usaremos varias veces. Estas también nos permiten renombrar el contenedor que estamos ejecutando, por ejemplo si tenemos una imagen de `postgres` y colocamos el comando `docker container run --name some-postgres -d postgres` esto le asignará el nombre `some-postgres` a nuestro contenedor. Las variables de entorno de las imágenes las podemos setear con la bandera `-e` como se puede ver a continuación:
 
-```docker
+```bash
 docker container run `
 	--name postgres-alpha `
 	-e POSTGRES_PASSWORD=mypass1 `
-	-dp 5432:5432
+	-dp 5432:5432 `
 	postgres
 ```
