@@ -55,9 +55,66 @@ Se pueden seguir los logs en los contenedores desde **Docker Desktop** o desde n
 Podemos utilizar variables con los tags cuando ejecutamos un comando en **Docker** donde podremos setear un valor específico que necesitamos y sabemos que usaremos varias veces. Estas también nos permiten renombrar el contenedor que estamos ejecutando, por ejemplo si tenemos una imagen de `postgres` y colocamos el comando `docker container run --name some-postgres -d postgres` esto le asignará el nombre `some-postgres` a nuestro contenedor. Las variables de entorno de las imágenes las podemos setear con la bandera `-e` como se puede ver a continuación:
 
 ```bash
-docker container run `
-	--name postgres-alpha `
-	-e POSTGRES_PASSWORD=mypass1 `
-	-dp 5432:5432 `
+// Windows
+docker container run ^
+	--name postgres-alpha ^
+	-e POSTGRES_PASSWORD=mypass1 ^
+	-dp 5432:5432 ^
 	postgres
+
+// Linux y Mac
+docker container run \
+	-dp 3306:3306 \
+	--name world-db \
+	--env MARIADB_USER=example-user \
+	--env MARIADB_PASSWORD=user-password \
+	--env MARIADB_ROOT_PASSWORD=root-secret-password \
+	--env MARIADB_DATABASE=world-db \
+	mariadb:jammy
 ```
+
+
+# Volúmenes
+
+Nos permiten guardar los datos de nuestras imágenes, ya que sin ellos los contenedores son volátiles, es decir que si borramos un contenedor los datos se pierden si no existe un volumen asociado a él.
+
+
+## Tipos de volúmenes
+
+- **Anonymous Volumes:** Docker le asigna un nombre único al volúmen para nuestro uso.
+
+- **Named Volumes:** Nosotros asignamos el nombre al volúmen.
+
+- **Bind Volumes:** Trabaja con paths absolutos, sirven cuando queremos vincular un file system de nuestro equipo con un file system de nuestro contenedor.
+
+| Descripción | Comando | Ejemplo |
+|--|--|--|
+| Crear un volumen | `docker volume create <NOMBRE>` | `docker volume create world-db` |
+| Listar volúmenes | `docker volume ls` | `docker volume ls` |
+| Inspeccionar un volumen | `docker volume inspect <NAME>` | `docker volume inspect world-db` |
+
+Si se desea asociar un contenedor a un volumen se puede hacer de la siguiente manera teniendo en cuenta que el volumen debe estar creado desde antes:
+
+```bash
+docker container run \
+	-dp 3306:3306 \
+	--name world-db \
+	--env MARIADB_USER=example-user \
+	--env MARIADB_PASSWORD=user-password \
+	--env MARIADB_ROOT_PASSWORD=root-secret-password \
+	--env MARIADB_DATABASE=world-db \
+	--volume world-db:/var/lib/mysql:Z \
+	mariadb:jammy
+
+docker container run ^
+	--name phpmyadmin ^
+	-d ^
+	-e PMA_ARBITRARY=1 ^
+	-p 8080:80 ^
+	phpmyadmin:5.2.0-apache
+```
+
+
+# Container Networking
+
+Si 2 o más contenedores están en la misma red pueden comunicarse entre sí. Si no lo están no sabrán de su existencia, esto es importante configurarlo si un contenedor depende de otro.
