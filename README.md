@@ -151,3 +151,26 @@ docker container run ^
 	--network world-app ^
 	phpmyadmin:5.2.0-apache
 ```
+
+Si necesitamos correr una app de NestJS con Docker podemos usar Bind Volumes como a continuación:
+
+```bash
+docker container run ^
+	--name nest-app ^
+	-w /app ^
+	-p 80:3000 ^
+	-v ${pwd}:/app ^
+	node:16-alpine3.16 ^
+	sh -c "yarn install && yarn start:dev"
+```
+
+
+# Terminal interactiva
+
+Nos permite ejecutar la terminal de comandos de nuestro contenedor para ejecutar comandos definidos en la terminal del sistema operativo (Linux Alpine) de nuestro contenedor.
+
+| Descripción | Comando | Ejemplo |
+|--|--|--|
+| Abrir terminal de comandos de nuestro contenedor | `docker exec -it <ID> /bin/sh` | `docker exec -it 4as /bin/sh` |
+| Editar archivo | `vi <NOMBRE-ARCHIVO>` | `vi todo.service.ts` y `:wq!` para guardar |
+| Salir de la terminal de comandos | `exit` | `exit` |
