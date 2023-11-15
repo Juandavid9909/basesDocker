@@ -118,3 +118,36 @@ docker container run ^
 # Container Networking
 
 Si 2 o más contenedores están en la misma red pueden comunicarse entre sí. Si no lo están no sabrán de su existencia, esto es importante configurarlo si un contenedor depende de otro.
+
+| Descripción | Comando | Ejemplo |
+|--|--|--|
+| Crear una red | `docker network create <NOMBRE>` | `docker network create world-app` |
+| Listar redes | `docker network ls` | `docker network ls` |
+| Inspeccionar un volumen | `docker volume inspect <NAME>` | `docker volume inspect world-db` |
+| Eliminar una red | `docker network rm -f <ID>` | `docker network rm 1fa` |
+| Eliminar todas las redes que no se estén utilizando | `docker network prune` | `docker network prune` |
+| Conector un contenedor a una red | `docker network connect <NOMBRE-RED o ID-RED> <ID-CONTENEDOR>` | `docker network connect world-app j56` |
+| Inspeccionar una red | `docker network inspect <NAME>` | `docker network inspect world-app` |
+
+Si se desea asignar la red desde la creación del contenedor podemos ejecutar:
+
+```
+docker container run \
+	-dp 3306:3306 \
+	--name world-db \
+	--env MARIADB_USER=example-user \
+	--env MARIADB_PASSWORD=user-password \
+	--env MARIADB_ROOT_PASSWORD=root-secret-password \
+	--env MARIADB_DATABASE=world-db \
+	--volume world-db:/var/lib/mysql:Z \
+	--network world-app \
+	mariadb:jammy
+
+docker container run ^
+	--name phpmyadmin ^
+	-d ^
+	-e PMA_ARBITRARY=1 ^
+	-p 8080:80 ^
+	--network world-app ^
+	phpmyadmin:5.2.0-apache
+```
