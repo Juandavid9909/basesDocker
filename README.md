@@ -174,3 +174,22 @@ Nos permite ejecutar la terminal de comandos de nuestro contenedor para ejecutar
 | Abrir terminal de comandos de nuestro contenedor | `docker exec -it <ID> /bin/sh` | `docker exec -it 4as /bin/sh` |
 | Editar archivo | `vi <NOMBRE-ARCHIVO>` | `vi todo.service.ts` y `:wq!` para guardar |
 | Salir de la terminal de comandos | `exit` | `exit` |
+
+
+# Docker Compose
+
+Es un archivo YAML que nos permite generar la estructura a base de comandos para montar todo lo que necesitemos para correr nuestras aplicaciones sin inconvenientes por su versionamiento, también se pueden crear las redes, volúmenes, y todo lo necesario que nos provee Docker.
+
+Siempre es importante iniciar con la versión de nuestro Docker Compose, esto le dirá a Docker si estamos en la versión Legacy, la 2, o si estamos trabajando con la última versión. Con esta versión tendremos más o menos comandos disponibles.
+
+Luego de configurar la versión tenemos que colocar los servicios que serán las imágenes de los contenedores que deseamos integrar. Aquí colocaremos el nombre del contenedor, su imagen, volumen, variables de entorno.
+
+Para ejecutar nuestros comandos escritos en el archivo YAML podemos ejecutar la siguiente instrucción:
+
+```bash
+// Bajar todo lo de nuestro Docker Compose
+docker compose down
+
+// Ejecutar las instrucciones de nuestro archivo YAML
+docker compose up -d
+```
