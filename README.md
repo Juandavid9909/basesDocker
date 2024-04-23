@@ -193,3 +193,248 @@ docker compose down
 // Ejecutar las instrucciones de nuestro archivo YAML
 docker compose up -d
 ```
+
+
+# Crear nuestras propias imágenes
+
+Para Dockerizar una aplicación nuestra debemos crear un archivo cuyo nombre es **Dockerfile** y aquí podremos colocar todas las instrucciones para la construcción de nuestra imagen. Para esto se deben seguir los siguientes pasos:
+
+- Indicar la imagen base con el comando `FROM`.
+- Indicar el directorio sobre el que trabajaremos en el servidor que se crea con Docker con el comando `WORKDIR` (es similar a hacer un `cd` a la carpeta especificada).
+- Copiar los archivos de nuestro proyecto al servidor usando el comando `COPY`.
+- Ejecutar los comandos requeridos para correr nuestro proyecto con el comando `RUN`.
+- Por último podremos usar el comando `CMD` para indicarle a Docker cómo correr nuestro proyecto una vez ya empiece a correr el contenedor.
+
+```docker
+FROM node:19.2-alpine3.16
+
+# alpine tiene la carpeta /app por defecto creada en la imagen
+WORKDIR /app
+
+# Como asignamos /app como nuestro Working Directory, al utilizar ./ apuntaremos a dicho directorio
+COPY app.js package.json ./
+
+RUN npm install
+
+# Comando run de la imagen
+CMD ["node", "app.js"]
+```
+
+Ya por último para ejecutar el comando de construcción podemos colocar la siguiente instrucción en la terminal:
+
+```bash
+docker build --tag nuestro-tag .
+
+# Ejemplo
+docker build --tag cron-ticker .
+```
+
+Docker cachea las ejecuciones de nuestras instrucciones en nuestro Dockerfile. Sin embargo, si encuentra cambios este automáticamente ejecutará las instrucciones del paso donde detectó dichos cambios y los pasos posteriores, por lo que podemos ajustar nuestro Dockerfile para evitar que ejecute cosas que sabemos que no cambiarán (o al menos muy poco):
+
+```docker
+FROM node:19.2-alpine3.16
+
+# alpine tiene la carpeta /app por defecto creada en la imagen
+WORKDIR /app
+
+# Como asignamos /app como nuestro Working Directory, al utilizar ./ apuntaremos a dicho directorio
+COPY package.json ./
+
+RUN npm install
+
+COPY app.js ./
+
+# Comando run de la imagen
+CMD ["node", "app.js"]
+```
+
+Si queremos asignar una versión a nuestra imagen podemos hacerlo así:
+
+```bash
+docker build --tag nuestro-tag:version .
+
+# Ejemplo
+docker build --tag cron-ticker:1.0.0 .
+```
+
+Y si queremos renombrar una imagen lo podemos hacer así:
+
+```bash
+docker image tag nuestro-tag:version nuestro-nuevo-tag:nuestra-nueva-version
+
+# Ejemplo
+docker image tag cron-ticker:1.0.0 cron-ticker:bufalo
+```
+
+
+## Subir imagen a Docker Hub
+
+Debemos acceder con nuestra cuenta a Docker Hub, crear el repositorio (pasos muy similares que GitHub) y Docker Hub nos entregará un comando para hacer el push de nuestra imagen, en este comando encontraremos el nuevo nombre de la imagen por lo que tendremos que renombrar nuestra imagen local, y luego de esto sí hacer push:
+
+```bash
+docker image tag cron-ticker:latest username/cron-ticker:latest
+
+# Para autenticarnos (tendremos que indicar nuestro username y nuestra contraseña)
+docker login
+
+docker push username/cron-ticker
+```
+
+## Pruebas automáticas al código
+
+Primero se configuran los tests en nuestra aplicación, por ejemplo podemos usar Jest en JavaScript y TypeScript. A continuación un ejemplo de un archivo Dockerfile para ejecutar los tests:
+
+```docker
+FROM node:19.2-alpine3.16
+
+# alpine tiene la carpeta /app por defecto creada en la imagen
+WORKDIR /app
+
+# Como asignamos /app como nuestro Working Directory, al utilizar ./ apuntaremos a dicho directorio
+COPY package.json ./
+
+RUN npm install
+
+# El . significa que copie todo
+COPY . .
+
+# Realizar testing
+RUN npm run  test
+
+# Comando run de la imagen
+CMD ["node", "app.js"]
+```
+
+Y por último ejecutamos el build de nuestro código para convertirlo en una imagen de Docker:
+
+```docker
+docker build -t username/cron-ticker:version .
+```
+
+
+## Dockerignore
+
+El archivo **.dockerignore** es como el archivo **.gitignore**, ya que nos permite ignorar los archivos y carpetas que queramos cuando ejecutamos un build.
+
+```docker
+node_modules/
+
+Dockerfile
+.dockerignore
+
+.git
+.gitignore
+```
+
+
+## Remover archivos y carpetas de la imagen
+
+```docker
+FROM node:19.2-alpine3.16
+
+# alpine tiene la carpeta /app por defecto creada en la imagen
+WORKDIR /app
+
+# Como asignamos /app como nuestro Working Directory, al utilizar ./ apuntaremos a dicho directorio
+COPY package.json ./
+
+RUN npm install
+
+# El . significa que copie todo
+COPY . .
+
+# Realizar testing
+RUN npm run  test
+
+# Eliminar archivos y directorio no necesarios
+RUN rm -rf  tests && rm -rf  node_modules
+
+# Únicamente las dependencias de prod
+RUN npm install  --prod
+
+# Comando run de la imagen
+CMD ["node", "app.js"]
+```
+
+
+## Forzar una plataforma en la construcción
+
+Si requerimos que utilice una plataforma de forma obligatoria (sistema operativo) podemos obligarlo en el comando `FROM ` de nuestro **Dockerfile**.
+
+```docker
+FROM --platform=linux/amd64 node:19.2-alpine3.16
+
+# alpine tiene la carpeta /app por defecto creada en la imagen
+WORKDIR /app
+
+# Como asignamos /app como nuestro Working Directory, al utilizar ./ apuntaremos a dicho directorio
+COPY package.json ./
+
+RUN npm install
+
+# El . significa que copie todo
+COPY . .
+
+# Realizar testing
+RUN npm run  test
+
+# Eliminar archivos y directorio no necesarios
+RUN rm -rf  tests && rm -rf  node_modules
+
+# Únicamente las dependencias de prod
+RUN npm install  --prod
+
+# Comando run de la imagen
+CMD ["node", "app.js"]
+```
+
+
+## Buildx
+
+Son todos los builders que tenemos para compilar nuestras imágenes y hacer que estas tengan una mayor compatibilidad.
+
+| Descripción | Comando | Ejemplo |
+|--|--|--|
+| Listar los builders | `docker buildx ls` | `docker buildx ls` |
+| Crear builders | `docker buildx create --name <NOMBRE> --driver <DRIVER> --bootstrap` | `docker buildx create --name mybuilder --driver docker-container --bootstrap` |
+| Usar builders creados | `docker buildx use <NOMBRE>` | `docker buildx use mybuilder` |
+| Hacer build multiplataforma | `docker buildx build --platform <ARQUITECTURAS> -t username/cron-ticker:version --push .` | `docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/v8 -t username/cron-ticker:version --push .` |
+
+Ya teniendo creado nuestro builder podemos ajustar la plataforma en la que queremos que corra nuestra imagen de forma dinámica colocando lo siguiente en nuestro **Dockerfile**:
+
+```docker
+FROM --platform=$BUILDPLATFORM node:19.2-alpine3.16
+
+# alpine tiene la carpeta /app por defecto creada en la imagen
+WORKDIR /app
+
+# Como asignamos /app como nuestro Working Directory, al utilizar ./ apuntaremos a dicho directorio
+COPY package.json ./
+
+RUN npm install
+
+# El . significa que copie todo
+COPY . .
+
+# Realizar testing
+RUN npm run  test
+
+# Eliminar archivos y directorio no necesarios
+RUN rm -rf  tests && rm -rf  node_modules
+
+# Únicamente las dependencias de prod
+RUN npm install  --prod
+
+# Comando run de la imagen
+CMD ["node", "app.js"]
+```
+
+Y para hacer el build tendremos que usar un comando como el siguiente especificando las arquitecturas en las que queremos compilar nuestra imagen:
+
+```bash
+docker buildx use <NOMBRE-BUILDER>
+
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/v8 -t username/cron-ticker:version --push .
+```
+
+También podemos hacer la creación para múltiples arquitecturas utilizando el mismo comando bash de `buildx` sin necesidad de usar la variable `$BUILDPLATFORM` ni especificar la plataforma en nuestro **Dockerfile**.
