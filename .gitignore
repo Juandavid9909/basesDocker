@@ -1,5 +1,9 @@
 *.sql
 
+node_modules/
+
+.env
+
 nest-graphql/
 pgadmin/
 postgres/
