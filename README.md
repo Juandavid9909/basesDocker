@@ -399,6 +399,8 @@ Son todos los builders que tenemos para compilar nuestras imágenes y hacer que 
 | Crear builders | `docker buildx create --name <NOMBRE> --driver <DRIVER> --bootstrap` | `docker buildx create --name mybuilder --driver docker-container --bootstrap` |
 | Usar builders creados | `docker buildx use <NOMBRE>` | `docker buildx use mybuilder` |
 | Hacer build multiplataforma | `docker buildx build --platform <ARQUITECTURAS> -t username/cron-ticker:version --push .` | `docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/v8 -t username/cron-ticker:version --push .` |
+| Utilizar builder default | `docker buildx use default` | `docker buildx use default` |
+| Eliminar builder | `docker buildx rm <NOMBRE` | `docker buildx rm mybuilder` |
 
 Ya teniendo creado nuestro builder podemos ajustar la plataforma en la que queremos que corra nuestra imagen de forma dinámica colocando lo siguiente en nuestro **Dockerfile**:
 
@@ -438,3 +440,57 @@ docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/
 ```
 
 También podemos hacer la creación para múltiples arquitecturas utilizando el mismo comando bash de `buildx` sin necesidad de usar la variable `$BUILDPLATFORM` ni especificar la plataforma en nuestro **Dockerfile**.
+
+
+# Multi-Stage Build
+
+Esto nos permite hacer la construcción de nuestra imagen en varios pasos, además de que podremos evitar realizar tareas así hayan cambios en algunos archivos. En pocas palabras es un **Dockerfile** con muchas etapas de construcción.
+
+```docker
+# Dependencias de desarrollo
+FROM node:19.2-alpine3.16  AS deps
+
+WORKDIR /app
+
+COPY package.json ./
+
+RUN npm install
+
+
+# Build y Tests
+FROM node:19.2-alpine3.16  AS builder
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+
+COPY . .
+
+RUN npm run  test
+  
+
+# Dependencias de producción
+FROM node:19.2-alpine3.16  AS prod-deps
+
+WORKDIR /app
+
+COPY package.json ./
+
+RUN npm install  --prod
+  
+
+# Ejecutar la app
+FROM node:19.2-alpine3.16  AS runner
+
+WORKDIR /app
+
+COPY --from=prod-deps /app/node_modules ./node_modules
+
+COPY app.js ./
+
+COPY tasks/ ./tasks
+
+RUN npm run  build
+
+CMD ["node", "dist/app.js"]
+```

@@ -1,26 +1,44 @@
-# FROM --platform=linux/amd64 node:19.2-alpine3.16
-# FROM node:19.2-alpine3.16
-FROM --platform=$BUILDPLATFORM node:19.2-alpine3.16
+# Dependencias de desarrollo
+FROM node:19.2-alpine3.16 AS deps
 
-# alpine tiene la carpeta /app por defecto creada en la imagen
 WORKDIR /app
 
-# Como asignamos /app como nuestro Working Directory, al utilizar ./ apuntaremos a dicho directorio
 COPY package.json ./
 
 RUN npm install
 
-# El . significa que copie todo
+
+# Build y Tests
+FROM node:19.2-alpine3.16 AS builder
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+
 COPY . .
 
-# Realizar testing
 RUN npm run test
 
-# Eliminar archivos y directorio no necesarios
-RUN rm -rf tests && rm -rf node_modules
 
-# Únicamente las dependencias de prod
+# Dependencias de producción
+FROM node:19.2-alpine3.16 AS prod-deps
+
+WORKDIR /app
+
+COPY package.json ./
+
 RUN npm install --prod
 
-# Comando run de la imagen
+
+# Ejecutar la app
+FROM node:19.2-alpine3.16 AS runner
+
+WORKDIR /app
+
+COPY --from=prod-deps /app/node_modules ./node_modules
+
+COPY app.js ./
+
+COPY tasks/ ./tasks
+
 CMD ["node", "app.js"]
