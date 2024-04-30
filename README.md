@@ -494,3 +494,65 @@ RUN npm run  build
 
 CMD ["node", "dist/app.js"]
 ```
+
+
+## Docker Compose con Dockerfile
+
+Podemos utilizar un archivo **Dockerfile** en nuestro **docker-compose.yaml** de la siguiente forma:
+
+```yaml
+version: '3'
+
+services:
+	app:
+		build:
+			context: .
+			target: ${STAGE}
+			dockerfile: Dockerfile
+
+		volumes:
+			- .:/app/
+			- /app/node_modules
+		container_name: nest-app
+		ports:
+			- ${PORT}:${PORT}
+		environment:
+			APP_VERSION: ${APP_VERSION}
+			STAGE: ${STAGE}
+			DB_PASSWORD: ${DB_PASSWORD}
+			DB_NAME: ${DB_NAME}
+			DB_HOST: ${DB_HOST}
+			DB_PORT: ${DB_PORT}
+			DB_USERNAME: ${DB_USERNAME}
+			PORT: ${PORT}
+			HOST_API: ${HOST_API}
+			JWT_SECRET: ${JWT_SECRET}
+
+	db:
+		image: postgres:14.3
+		restart: always
+		ports:
+			- "5432:5432"
+		environment:
+			POSTGRES_PASSWORD: ${DB_PASSWORD}
+			POSTGRES_DB: ${DB_NAME}
+		container_name: ${DB_NAME}
+		volumes:
+			- postgres-db:/var/lib/postgresql/data
+
+volumes:
+	postgres-db:
+		external: false
+```
+
+
+## Utilizar un docker-compose.yaml específico
+
+Para utilizar un docker-compose.yaml específico (por si tenemos uno para producción y otro para desarrollo) podemos usar el siguiente comando en la terminal:
+
+```bash
+docker compose -f docker-compose.prod.yaml up -d
+
+# Si queremos hacer el build en un servicio/imagen específico
+docker compose -f docker-compose.prod.yaml build app
+```
