@@ -583,3 +583,72 @@ docker buildx build \
 ```
 
 Luego simplemente tenemos que crear la app utilizando el Container Registry de Digital Ocean, configurar todo lo necesario y ya nuestro contenedor estará listo.
+
+
+# GitHub Actions
+
+Para hacer despliegues automatizados con GitHub Actions podemos seguir los siguientes pasos:
+
+- Subir nuestros archivos a un repositorio de Git.
+- Ir a la sección "Settings" donde podremos crear nuestros Secrets para los Actions.
+- Agregar en Repository Secrets nuestro nombre de usuario de Docker y un token de acceso para evitar usar la contraseña directamente.
+- Crear el repositorio en Docker Hub.
+- Ir a la opción "Actions" donde podremos realizar la creación de la acción que queremos realizar en nuestro repositorio.
+- Seleccionar la opción que queramos utilizar, en este caso "Docker Image".
+
+En este momento podremos configurar nuestro archivo YAML para indicar los triggers y las acciones a ejecutar en nuestro pipeline. A continuación un ejemplo:
+
+```yaml
+# Nombre del pipeline
+name: Docker Image CI
+
+#Triggers
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+#Acciones
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Git Semantic Version
+      uses: PaulHatch/semantic-version@v4.0.3
+      with:
+        major_pattern: "major:"
+        minor_pattern: "feat:"
+        format: "${major}.${minor}.${patch}-prerelease${increment}"
+      id: version
+
+    - name: Docker login
+      env:
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+        echo "New version: $NEW_VERSION!!!!!!"
+
+    - name: Build Docker image
+      env:
+        NEW_VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        docker build -t varelajuan860/docker-graphql:$NEW_VERSION .
+        docker build -t varelajuan860/docker-graphql:latest .
+
+    - name: Push Docker Image
+      env:
+        NEW_VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        docker push varelajuan860/docker-graphql:$NEW_VERSION
+        docker push varelajuan860/docker-graphql:latest
+```
