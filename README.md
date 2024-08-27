@@ -556,3 +556,30 @@ docker compose -f docker-compose.prod.yaml up -d
 # Si queremos hacer el build en un servicio/imagen específico
 docker compose -f docker-compose.prod.yaml build app
 ```
+
+
+# Deployments y registros
+
+Muchas veces necesitaremos desplegar nuestros contenedores en servicios como Azure, AWS, Google Cloud Platform o Digital Ocean, entre otras. Para esto lo que podemos hacer es desplegar nuestros contenedores en Docker Hub utilizando BuildX y luego desde Digital Ocean crear una app utilizando Docker Hub, diligenciar todos los datos de nuestro contenedor desplegado en Docker Hub y realizar toda la configuración de réplicas, variables de entorno y demás para realizar el despliegue.
+
+Para hacer el despliegue utilizando el Container Registry de Digital Ocean, para esto creamos nuestro registro de contenedores privados y crear también un token de acceso a nuestro Container Registry, luego ejecutamos los siguientes comandos para autenticarnos:
+
+```docker
+docker logout
+
+docker logout registry.digitalocean.com
+
+docker login registry.digitalocean.com
+```
+
+Esto nos pedirá un usuario y contraseña, aquí podremos colocar los token en ambos campos. Una vez estamos logueados podremos hacer la publicación de la siguiente manera:
+
+```docker
+docker buildx build \
+
+--platform linux/amd64,linux/arm64 \
+
+-t registry.digitalocean.com/<nombre-container-registry>/<username>/<image>:1.1.0 --push .
+```
+
+Luego simplemente tenemos que crear la app utilizando el Container Registry de Digital Ocean, configurar todo lo necesario y ya nuestro contenedor estará listo.
