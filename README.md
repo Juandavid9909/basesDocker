@@ -652,3 +652,60 @@ jobs:
         docker push varelajuan860/docker-graphql:$NEW_VERSION
         docker push varelajuan860/docker-graphql:latest
 ```
+
+
+# Nginx
+
+Nos sirve para realizar balanceos de carga, hosting, entre otras cosas. Una forma muy fácil de hacer uso de ello es:
+
+```bash
+# Correr la imagen
+docker run --name some-nginx -d -p 8080:80 some-content-nginx
+
+# Abrir la terminal de nuestro contenedor
+docker exec it <id-contenedor> bash
+
+# Ver configuración nginx
+cd /etc/nginx/conf.d
+cat default.conf
+```
+
+Copiamos todo lo que encontremos en el archivo `default.conf`, y ponemos la siguiente configuración en location:
+
+```nginx
+location / {
+	root /usr/share/nginx/html;
+	index  index.html index.htm;
+	try_files  $uri  $uri/ /index.html;
+}
+```
+
+Luego configuramos nuestro Dockerfile:
+
+```docker
+FROM node:19-alpine3.15  AS dev-deps
+WORKDIR /app
+COPY package.json package.json
+RUN yarn install  --frozen-lockfile
+
+FROM node:19-alpine3.15  AS builder
+WORKDIR /app
+COPY --from=dev-deps /app/node_modules ./node_modules
+COPY . .
+RUN yarn build
+
+FROM nginx:1.23.3  AS prod
+EXPOSE 80
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY assets/ /usr/share/nginx/html/assets
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx/nginx.conf /etc/nginx/conf.d
+
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+Y después ejecutamos el comando para hacer la construcción de nuestro contenedor:
+
+```bash
+docker build -t <nombre-contenedor> . --no-cache
+```
