@@ -449,47 +449,29 @@ Esto nos permite hacer la construcción de nuestra imagen en varios pasos, adem�
 ```docker
 # Dependencias de desarrollo
 FROM node:19.2-alpine3.16  AS deps
-
 WORKDIR /app
-
 COPY package.json ./
-
 RUN npm install
-
 
 # Build y Tests
 FROM node:19.2-alpine3.16  AS builder
-
 WORKDIR /app
-
 COPY --from=deps /app/node_modules ./node_modules
-
 COPY . .
-
 RUN npm run  test
   
-
 # Dependencias de producción
 FROM node:19.2-alpine3.16  AS prod-deps
-
 WORKDIR /app
-
 COPY package.json ./
-
 RUN npm install  --prod
   
-
 # Ejecutar la app
 FROM node:19.2-alpine3.16  AS runner
-
 WORKDIR /app
-
 COPY --from=prod-deps /app/node_modules ./node_modules
-
 COPY app.js ./
-
 COPY tasks/ ./tasks
-
 RUN npm run  build
 
 CMD ["node", "dist/app.js"]
@@ -708,4 +690,163 @@ Y después ejecutamos el comando para hacer la construcción de nuestro contened
 
 ```bash
 docker build -t <nombre-contenedor> . --no-cache
+```
+
+
+# Kubernetes (K8S)
+
+Es una plataforma para automatizar el despliegue, escala y manejo de contenedores, fue creado por Google pero ahora es Open Source.
+
+## ¿Qué problema resuelve Kubernetes?
+
+- Los usuarios esperan un servicio 24/7.
+	- Los de IT esperan hacer muchos despliegues en un día sin detener el servicio que está corriendo.
+- Las compañías esperan mayor eficiencia de los recursos en la nube.
+	- Un sistema tolerante a fallas en el momento que algo salga mal.
+		- Escalar hacia arriba o abajo según demanda.
+
+
+## Orquestación
+
+- Manejo automático de aplicaciones en contenedores.
+- Alta disponibilidad.
+- Prácticamente no hay "downtimes" en reemplazos de versiones.
+- Fácil manejo de réplicas.
+
+
+## Componentes principales
+
+### Pod
+Los pods son los objetos implementables más pequeños y básicos en K8s.
+
+- Es una capa abstracta sobre uno o más contenedores.
+- Esto permite reemplazarlos fácilmente.
+
+Tienen una IP única asignada, que al reconstruirse cambia.
+
+### Service
+Tienen una IP única asignada, y tenemos 2 tipos:
+
+- IP permanente.
+- Ciclo de vida del Pod y Servicio son independientes.
+
+### Ingress
+Una nueva solicitud a nuestro sitio web (por ejemplo) entra primero por ingress y este a los respectivos servicios.
+
+### ConfigMap
+Podemos verlo como las variables de entornos que no son privadas. No importa si las personas las ven porque se almacenan en un objeto plano a la vista. Nos permite evitar reescribir las variables en cada despliegue, etc.
+
+### Secret
+Es como un ConfigMap pero relativamente seguro, pero debemos encriptar los datos ya que si no lo hacemos Kubernets no nos permitirá continuar, y sirven para mantener ciertas variables de entorno que deben permanecer ocultas.
+
+### Volume
+Son iguales a los volúmenes de Docker. Es decir, que son como discos duros externos que se acoplan a nuestro clúster. K8S no maneja la persistencia de la data.
+
+### Deployment
+Es el plano o "Blueprint" para crear todo el Pod y la cantidad de réplicas. Aquí es donde se puede escalar hacia arriba o hacia abajo. Estas réplicas nos permitirán ejecutar otro Pod al que podrán acceder los usuarios si nuestro Pod principal se cae.
+
+### StatefulSet
+Es el plano similar a los deployments, pero para bases de datos principalmente. Importante tener en cuenta que la base de datos no se puede replicar.
+
+### Resumen
+- **Pod:** Capa que se construye sobre los contenedores.
+- **Service:** Permite comunicación con direcciones fijas.
+- **Ingress:** Tráfico externo que viaja para adentro del clúster.
+- **ConfigMap:** Configuraciones como variables de entorno.
+- **Secret:** Similar al ConfigMap pero secretos.
+- **Volume:** Mantener la data persistente.
+- **Deployment:** Planos o "BluePrints" de la construcción de un Pod.
+- **StatefulSet:** Similar al "Deployment" pero para uso de bases de datos.
+
+
+## Clúster
+
+Es un grupo de nodos que corren aplicaciones en contenedores de una forma eficiente, automatizada, distribuida y escalable.
+
+![Cluster example](https://miro.medium.com/v2/resize:fit:973/1*uXm8Ocb72LKv2m3z_QW2LQ.png)
+
+
+## Comandos
+
+| Descripción | Comando | Ejemplo |
+|--|--|--|
+| Iniciar minikube | `minikube start` | `minikube start` |
+| Convertir string a base64 para nuestros secretos | `echo -n <string> | base64` | `echo -n postgres | base64` |
+| Ver versión de kubectl | `kubectl version` | `kubectl version` |
+| Ver clústeres | `kubectl get all` | `kubectl get all` |
+| Agregar configuraciones en archivos YAML | `kubectl apply -f <archivo>` | `kubectl apply -f postgres-config.yaml` |
+| Describir recurso en minikube | `kubectl describe <nombre-recurso>` | `kubectl describe deployment.apps/postgres-deployment` |
+| Ver logs en minikube | `kubectl logs <nombre-recurso>` | `kubectl logs pod/postgres-deployment` |
+| Abrir servicio montado en minikube | `minikube service <nombre-servicio>` | `minikube service pg-admin-service` |
+| Reiniciar deployments | `kubectl rollout restart deployment` | `kubectl rollout restart deployment` |
+| Eliminar clústeres | `minikube delete --all` | `minikube delete --all` |
+
+
+## Implementaciones
+
+### ConfigMap
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+	name: postgres-config
+data:
+	DB_NAME: postgres
+	DB_HOST: postgres-service
+	DB_PORT: "5432"
+```
+
+### Secrets
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+	name: postgres-secrets
+type: Opaque
+data:
+	DB_USER: 5emitj
+	DB_PASSWORD: kq4gihvszzgn1p0r
+```
+
+### Deployments
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15.1
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: DB_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  selector:
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432 # cualquier puerto
+      targetPort: 5432
 ```
